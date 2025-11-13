@@ -1,0 +1,390 @@
+import React, { useState, useEffect } from 'react';
+import { Calendar, Clock, TrendingDown, Plus, Check, X, AlertCircle, Brain, Zap } from 'lucide-react';
+
+const TimeManagementApp = () => {
+  const [tasks, setTasks] = useState([
+    { id: 1, title: 'Quarterly presentation', priority: 'high', estimated: 120, deadline: '2025-11-15', completed: false, category: 'work' },
+    { id: 2, title: 'Team meeting prep', priority: 'medium', estimated: 30, deadline: '2025-11-14', completed: false, category: 'work' },
+    { id: 3, title: 'Email responses', priority: 'low', estimated: 20, deadline: '2025-11-13', completed: false, category: 'work' },
+    { id: 4, title: 'Gym workout', priority: 'medium', estimated: 60, deadline: '2025-11-13', completed: false, category: 'personal' }
+  ]);
+  
+  const [newTask, setNewTask] = useState({ title: '', priority: 'medium', estimated: 30, deadline: '', category: 'work' });
+  const [activeTab, setActiveTab] = useState('tasks');
+  const [focusMode, setFocusMode] = useState(false);
+  
+  const priorityColors = {
+    high: 'bg-red-100 border-red-300 text-red-800',
+    medium: 'bg-yellow-100 border-yellow-300 text-yellow-800',
+    low: 'bg-green-100 border-green-300 text-green-800'
+  };
+  
+  const priorityScore = { high: 3, medium: 2, low: 1 };
+  
+  // ML-inspired scheduling algorithm
+  const getOptimalSchedule = () => {
+    const now = new Date();
+    const incompleteTasks = tasks.filter(t => !t.completed);
+    
+    return incompleteTasks
+      .map(task => {
+        const deadline = new Date(task.deadline);
+        const daysUntil = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+        const urgencyScore = Math.max(0, 10 - daysUntil);
+        const mlScore = (priorityScore[task.priority] * 0.4) + (urgencyScore * 0.6);
+        
+        return { ...task, mlScore, daysUntil };
+      })
+      .sort((a, b) => b.mlScore - a.mlScore);
+  };
+  
+  const getTopPriorityTasks = () => {
+    return getOptimalSchedule().slice(0, 3);
+  };
+  
+  const addTask = () => {
+    if (newTask.title && newTask.deadline) {
+      setTasks([...tasks, { ...newTask, id: Date.now(), completed: false }]);
+      setNewTask({ title: '', priority: 'medium', estimated: 30, deadline: '', category: 'work' });
+    }
+  };
+  
+  const toggleTask = (id) => {
+    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+  };
+  
+  const deleteTask = (id) => {
+    setTasks(tasks.filter(t => t.id !== id));
+  };
+  
+  const getTotalTime = () => {
+    return tasks.filter(t => !t.completed).reduce((sum, t) => sum + t.estimated, 0);
+  };
+  
+  const getProductivityInsights = () => {
+    const completed = tasks.filter(t => t.completed).length;
+    const total = tasks.length;
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    return { completed, total, completionRate };
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
+                <Brain className="text-indigo-600" />
+                SmartTime AI
+              </h1>
+              <p className="text-gray-600 mt-1">Intelligent time management powered by ML</p>
+            </div>
+            <button
+              onClick={() => setFocusMode(!focusMode)}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                focusMode 
+                  ? 'bg-indigo-600 text-white shadow-lg' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Zap className="inline mr-2" size={18} />
+              {focusMode ? 'Focus Mode ON' : 'Enable Focus Mode'}
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Dashboard */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-xl shadow-md p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm">Total Time</p>
+                <p className="text-2xl font-bold text-gray-800">{getTotalTime()} min</p>
+              </div>
+              <Clock className="text-blue-500" size={32} />
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-md p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm">Completion Rate</p>
+                <p className="text-2xl font-bold text-gray-800">{getProductivityInsights().completionRate}%</p>
+              </div>
+              <TrendingDown className="text-green-500" size={32} />
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-md p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm">Tasks Remaining</p>
+                <p className="text-2xl font-bold text-gray-800">{tasks.filter(t => !t.completed).length}</p>
+              </div>
+              <Calendar className="text-purple-500" size={32} />
+            </div>
+          </div>
+        </div>
+
+        {/* Focus Mode - Top 3 Priority Tasks */}
+        {focusMode && (
+          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-xl p-6 mb-6 text-white">
+            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+              <Zap size={24} />
+              Focus on These High-Impact Tasks
+            </h2>
+            <div className="space-y-3">
+              {getTopPriorityTasks().map((task, idx) => (
+                <div key={task.id} className="bg-white bg-opacity-20 backdrop-blur rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl font-bold opacity-50">#{idx + 1}</span>
+                      <div>
+                        <h3 className="font-semibold text-lg">{task.title}</h3>
+                        <p className="text-sm opacity-90">
+                          {task.estimated} min · Due in {task.daysUntil} days · ML Score: {task.mlScore.toFixed(1)}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleTask(task.id)}
+                      className="bg-white text-indigo-600 px-4 py-2 rounded-lg font-medium hover:bg-opacity-90 transition-all"
+                    >
+                      Start Task
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          {/* Tabs */}
+          <div className="flex border-b">
+            <button
+              onClick={() => setActiveTab('tasks')}
+              className={`flex-1 px-6 py-4 font-medium transition-all ${
+                activeTab === 'tasks'
+                  ? 'bg-indigo-50 text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              All Tasks
+            </button>
+            <button
+              onClick={() => setActiveTab('schedule')}
+              className={`flex-1 px-6 py-4 font-medium transition-all ${
+                activeTab === 'schedule'
+                  ? 'bg-indigo-50 text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              ML Schedule
+            </button>
+            <button
+              onClick={() => setActiveTab('add')}
+              className={`flex-1 px-6 py-4 font-medium transition-all ${
+                activeTab === 'add'
+                  ? 'bg-indigo-50 text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Add Task
+            </button>
+          </div>
+
+          <div className="p-6">
+            {/* All Tasks Tab */}
+            {activeTab === 'tasks' && (
+              <div className="space-y-3">
+                {tasks.map(task => (
+                  <div
+                    key={task.id}
+                    className={`border-2 rounded-lg p-4 transition-all ${
+                      task.completed ? 'bg-gray-50 opacity-60' : 'bg-white hover:shadow-md'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 flex-1">
+                        <button
+                          onClick={() => toggleTask(task.id)}
+                          className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${
+                            task.completed
+                              ? 'bg-green-500 border-green-500'
+                              : 'border-gray-300 hover:border-green-500'
+                          }`}
+                        >
+                          {task.completed && <Check className="text-white" size={16} />}
+                        </button>
+                        
+                        <div className="flex-1">
+                          <h3 className={`font-semibold text-lg ${task.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+                            {task.title}
+                          </h3>
+                          <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">
+                            <span>{task.estimated} min</span>
+                            <span>·</span>
+                            <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
+                            <span>·</span>
+                            <span className="capitalize">{task.category}</span>
+                          </div>
+                        </div>
+                        
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${priorityColors[task.priority]}`}>
+                          {task.priority.toUpperCase()}
+                        </span>
+                      </div>
+                      
+                      <button
+                        onClick={() => deleteTask(task.id)}
+                        className="ml-4 text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ML Schedule Tab */}
+            {activeTab === 'schedule' && (
+              <div>
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <Brain className="text-indigo-600 mt-1" size={24} />
+                    <div>
+                      <h3 className="font-semibold text-indigo-900 mb-1">AI-Optimized Schedule</h3>
+                      <p className="text-sm text-indigo-700">
+                        Tasks ranked by ML algorithm considering priority, deadlines, and time estimates
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  {getOptimalSchedule().map((task, idx) => (
+                    <div
+                      key={task.id}
+                      className="border-2 border-indigo-100 rounded-lg p-4 bg-gradient-to-r from-white to-indigo-50"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="bg-indigo-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold">
+                          {idx + 1}
+                        </div>
+                        
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg text-gray-800">{task.title}</h3>
+                          <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">
+                            <span>{task.estimated} min</span>
+                            <span>·</span>
+                            <span>Due in {task.daysUntil} days</span>
+                            <span>·</span>
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${priorityColors[task.priority]}`}>
+                              {task.priority}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="text-right">
+                          <div className="text-sm text-gray-500">ML Score</div>
+                          <div className="text-2xl font-bold text-indigo-600">{task.mlScore.toFixed(1)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add Task Tab */}
+            {activeTab === 'add' && (
+              <div className="max-w-2xl mx-auto">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">Add New Task</h2>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Task Title</label>
+                    <input
+                      type="text"
+                      value={newTask.title}
+                      onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Enter task name..."
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                      <select
+                        value={newTask.priority}
+                        onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                      <select
+                        value={newTask.category}
+                        onChange={(e) => setNewTask({ ...newTask, category: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="work">Work</option>
+                        <option value="personal">Personal</option>
+                        <option value="health">Health</option>
+                        <option value="learning">Learning</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Estimated Time (min)</label>
+                      <input
+                        type="number"
+                        value={newTask.estimated}
+                        onChange={(e) => setNewTask({ ...newTask, estimated: parseInt(e.target.value) || 0 })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
+                      <input
+                        type="date"
+                        value={newTask.deadline}
+                        onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={addTask}
+                    className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 mt-6"
+                  >
+                    <Plus size={20} />
+                    Add Task
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default TimeManagementApp;
